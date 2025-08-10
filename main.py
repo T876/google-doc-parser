@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 """
-Google Doc Parser - Simple Requests Approach
+Google Doc Parser
 
-Fetches Google Doc content using requests and cleans up the data.
+Fetches Google Doc content using requests and cleans up the data. It then builds a 2D map of nodes and prints it to the console,
+filling in the blanks with space characters.
+
 """
 
 import requests
@@ -70,7 +71,7 @@ def build_nodes_from_rows(rows: list[str]) -> tuple[dict, int, int]:
     """
     Builds a 2D map of nodes from the data in the provided document.
     """
-    nodes = {} # 2D map of nodes
+    nodes = {}
     reached_data = False
     i = 0
     max_x = 0
