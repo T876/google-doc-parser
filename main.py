@@ -13,15 +13,11 @@ def extract_document_id(url: str) -> str:
     """
     Extracts the document ID from a Google Docs URL.
     """
-    print(f"Original URL: {url}")
-    
-    # Handle both regular URLs (/d/DOC_ID) and published URLs (/d/e/DOC_ID)
     doc_id_match = re.search(r'/document/d/(?:e/)?([a-zA-Z0-9-_]+)', url)
     if not doc_id_match:
         raise ValueError("Invalid Google Doc URL. Please provide a valid Google Docs URL.")
     
     doc_id = doc_id_match.group(1)
-    print(f"Document ID: {doc_id}")
     return doc_id
 
 
@@ -31,24 +27,21 @@ def get_google_doc_html(url: str) -> str:
     """
     doc_id = extract_document_id(url)
     
-    # Try different approaches for different URL types
+    # Try different approaches for different URL types (my demo vs. provided doc)
     urls_to_try = [
-        f"https://docs.google.com/document/d/e/{doc_id}/pub",  # Published format
-        f"https://docs.google.com/document/d/{doc_id}/pub",    # Regular format
-        f"https://docs.google.com/document/d/{doc_id}/export?format=html",  # HTML export
+        f"https://docs.google.com/document/d/e/{doc_id}/pub",
+        f"https://docs.google.com/document/d/{doc_id}/pub",
+        f"https://docs.google.com/document/d/{doc_id}/export?format=html",
     ]
     
     for attempt_url in urls_to_try:
-        print(f"Trying: {attempt_url}")
         try:
             response = requests.get(attempt_url, timeout=30)
             if response.status_code == 200:
-                print(f"Success! Retrieved {len(response.text)} characters")
+                print("Document contents fetched successfully.")
                 return response.text
-            else:
-                print(f"Failed with status code: {response.status_code}")
         except requests.RequestException as e:
-            print(f"Request failed: {e}")
+            pass
     
     raise Exception("Could not fetch document from any URL format")
 
@@ -63,21 +56,10 @@ def clean_document_content(html_content: str) -> str:
     for script in soup(["script", "style"]):
         script.decompose()
     
-    content_areas = [
-        soup.find('div', {'id': 'contents'}),
-        soup.find('div', {'class': 'doc-content'}),
-        soup.find('div', {'class': 'kix-appview-editor'}),
-        soup.find('body')  # fallback
-    ]
-    
-    main_content = None
-    for area in content_areas:
-        if area:
-            main_content = area
-            break
+    main_content = soup.find('body')
     
     if not main_content:
-        main_content = soup
+        raise Exception("Could not find main content")
     
     text = main_content.get_text(separator='\n', strip=True)
     lines = text.split('\n')
@@ -85,6 +67,9 @@ def clean_document_content(html_content: str) -> str:
     return [line for line in lines if line.strip()]
 
 def build_nodes_from_rows(rows: list[str]) -> tuple[dict, int, int]:
+    """
+    Builds a 2D map of nodes from the data in the provided document.
+    """
     nodes = {} # 2D map of nodes
     reached_data = False
     i = 0
@@ -114,6 +99,9 @@ def build_nodes_from_rows(rows: list[str]) -> tuple[dict, int, int]:
     return nodes, max_x, max_y
 
 def print_node_map(nodes: dict, max_x: int, max_y: int):
+    """
+    Prints the 2D node map to the console.
+    """
     for y in reversed(range(max_y + 1)):
         for x in range(max_x + 1):
             if x in nodes[y]:
@@ -124,12 +112,11 @@ def print_node_map(nodes: dict, max_x: int, max_y: int):
 
 def main():
     """
-    Main function - get URL and fetch clean document content.
+    Main function - get URL and fetch clean document content. Then, decode the message and print it.
     """
     print("Google Doc Content Fetcher")
     print("=" * 40)
     
-    # Get the URL from user
     url = input("Enter the Google Doc URL: ").strip()
     
     if not url:
@@ -137,19 +124,17 @@ def main():
         return
     
     try:
-        # Fetch the HTML content
         print("\nFetching document...")
         html_content = get_google_doc_html(url)
         
-        # Clean and extract the content
         print("Cleaning content...")
         clean_rows = clean_document_content(html_content)
         
         nodes, max_x, max_y = build_nodes_from_rows(clean_rows)
 
+        print("\nMessage:\n")
         print_node_map(nodes, max_x, max_y)
-        print(f"Max X: {max_x}, Max Y: {max_y}")
-
+        print("\n" * 2);
         
     except Exception as e:
         print(f"Error: {e}")
